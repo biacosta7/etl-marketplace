@@ -41,7 +41,7 @@ export default class PaginationRun<T> {
         console.timeEnd('process items');
 
         if (productResponse.page === productResponse.lastPage) {
-            logger.info('Processed Items', this.processedItems);
+            logger.info('Processed Items ' + this.processedItems);
 
             await this.processFinished();
 
