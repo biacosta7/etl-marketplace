@@ -291,6 +291,19 @@ class ExportLiferayProducts {
                                         ?.domain;
                                 },
                             },
+                            {
+                                name: 'customFields',
+                                label: 'Purpose',
+                                render: (customFields) => {
+                                    const orderMetadata = safeJSONParse(
+                                        customFields?.['order-metadata'],
+                                        { dxpTypeFreeForm: { purpose: '' } },
+                                    );
+
+                                    return orderMetadata?.dxpTypeFreeForm
+                                        ?.purpose;
+                                },
+                            },
                         ],
                         orders,
                     );
