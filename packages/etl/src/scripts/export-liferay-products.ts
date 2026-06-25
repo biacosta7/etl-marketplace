@@ -14,6 +14,7 @@ class ExportLiferayProducts {
     private orders: Order[] = [];
 
     async runAiHub() {
+        this.orders = [];
         const self = this;
         const paginationRun = new PaginationRun();
 
@@ -82,7 +83,7 @@ class ExportLiferayProducts {
                         query: {
                             filter: SearchBuilder.in(
                                 'orderTypeExternalReferenceCode',
-                                ['AI_HUB'],
+                                ['AI_HUB_PRIVATE_BETA'],
                             ),
                             nestedFields: 'account',
                             page: `${page}`,
@@ -105,6 +106,7 @@ class ExportLiferayProducts {
     }
 
     async runCMPBeta() {
+        this.orders = [];
         const self = this;
         const paginationRun = new PaginationRun();
 
@@ -162,6 +164,7 @@ class ExportLiferayProducts {
     }
 
     async runDXPFree() {
+        this.orders = [];
         const self = this;
         const paginationRun = new PaginationRun();
 
@@ -231,7 +234,96 @@ class ExportLiferayProducts {
         logger.info('Processed finished');
     }
 
-    
+    async runHubspot() {
+        this.orders = [];
+        const self = this;
+        const paginationRun = new PaginationRun();
+
+        await paginationRun.dryRun<Order>(
+            {
+                async processItem(order: Order) {
+                    self.orders.push(order);
+                },
+
+                async processFinished() {
+                    const csv = new CSV(
+                        [
+                            { name: 'id', label: 'Order ID' },
+                            {
+                                name: 'orderItems',
+                                label: 'App Name',
+                                render: (orderItems) =>
+                                    orderItems
+                                        ?.map(
+                                            (item: any) =>
+                                                item?.name?.en_US || item?.name,
+                                        )
+                                        .join(', '),
+                            },
+                            {
+                                name: 'creatorEmailAddress',
+                                label: 'Creator Email Address',
+                            },
+                            {
+                                name: 'account',
+                                label: 'Account Name',
+                                render: (account) => account?.name,
+                            },
+                            {
+                                name: 'orderTypeExternalReferenceCode',
+                                label: 'App Type',
+                            },
+                            {
+                                name: 'totalFormatted',
+                                label: 'Amount',
+                            },
+                            {
+                                name: 'orderStatusInfo',
+                                label: 'Order Status',
+                                render: (orderStatusInfo) =>
+                                    orderStatusInfo?.label,
+                            },
+                            {
+                                name: 'paymentStatusInfo',
+                                label: 'Payment Status',
+                                render: (paymentStatusInfo) =>
+                                    paymentStatusInfo?.label,
+                            },
+                            {
+                                name: 'createDate',
+                                label: 'Created At',
+                            },
+                        ],
+                        self.orders,
+                    );
+
+                    await csv.save('hubspot.csv');
+                },
+                fetchData: (page, pageSize) =>
+                    getOrdersPage({
+                        client: liferayClient,
+                        query: {
+                            nestedFields: 'account,orderItems',
+                            sort: 'createDate:desc',
+                            page: `${page}`,
+                            pageSize: `${pageSize}`,
+                            search: 'Hubspot',
+                        },
+                    })
+                        .then((response) => response.data)
+                        .catch((error) => {
+                            logger.error(error);
+
+                            return {
+                                items: [],
+                            };
+                        }),
+            },
+            { page: 1, pageSize: 20 },
+        );
+
+        logger.info('Processed finished');
+    }
 }
 
 const exportLiferayProducts = new ExportLiferayProducts();
@@ -239,3 +331,4 @@ const exportLiferayProducts = new ExportLiferayProducts();
 await exportLiferayProducts.runAiHub();
 await exportLiferayProducts.runCMPBeta();
 await exportLiferayProducts.runDXPFree();
+await exportLiferayProducts.runHubspot();
